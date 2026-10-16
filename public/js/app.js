@@ -330,7 +330,7 @@ function cuerpoSerie(s) {
     abierta ? estado.abiertas.delete(s.id) : estado.abiertas.add(s.id);
     pintarTrabajo();
   });
-  const quitar = el('button', { type: 'button', class: 'mini', title: 'Quitar del espacio de trabajo' }, 'Quitar');
+  const quitar = el('button', { type: 'button', class: 'boton-icono eliminar', title: 'Eliminar del espacio de trabajo', 'aria-label': `Eliminar ${s.nombre}` });
   quitar.addEventListener('click', () => {
     estado.series = estado.series.filter((x) => x.id !== s.id);
     estado.seleccion = estado.seleccion.filter((x) => x !== s.id);
@@ -362,21 +362,21 @@ function cuerpoSerie(s) {
     el('td', {},
       el('div', { class: 'serie-acciones izq' },
         !soloTotal && toggle,
-        tieneEntidades && el('button', { type: 'button', class: 'mini', onclick: () => abrirMapa(s) }, 'Mapa'),
-        quitar),
+        tieneEntidades && el('button', { type: 'button', class: 'mini', onclick: () => abrirMapa(s) }, 'Mapa')),
       el('span', { class: 'serie-meta' }, soloTotal ? 'Calculado sobre el total agregado' : `Total: ${etiquetaTotal(s.nivel)}`)),
-    celdaTotal('total'), celdaTotal('hombres'), celdaTotal('mujeres')));
+    celdaTotal('total'), celdaTotal('hombres'), celdaTotal('mujeres'),
+    el('td', { class: 'col-accion' }, quitar)));
   if (abierta) {
     const limite = estado.completas.has(s.id) ? Infinity : FILAS_VISIBLES;
     for (const f of s.filas.slice(0, limite)) {
       tbody.append(el('tr', { class: 'fila-valor' }, el('td'), el('td'), el('td'), el('td'),
         el('td', {}, f.unidad, f.categoria ? el('span', { class: 'serie-meta categoria' }, f.categoria) : null),
-        celdaValor(f.total), celdaValor(f.hombres), celdaValor(f.mujeres)));
+        celdaValor(f.total), celdaValor(f.hombres), celdaValor(f.mujeres), el('td')));
     }
     if (s.filas.length > limite) {
       const mas = el('button', { type: 'button', class: 'enlace' }, `Mostrar las ${s.filas.length} filas`);
       mas.addEventListener('click', () => { estado.completas.add(s.id); pintarTrabajo(); });
-      tbody.append(el('tr', { class: 'mas-filas' }, el('td', { colspan: 8 }, `Se muestran ${limite} de ${s.filas.length}. `, mas)));
+      tbody.append(el('tr', { class: 'mas-filas' }, el('td', { colspan: 9 }, `Se muestran ${limite} de ${s.filas.length}. `, mas)));
     }
   }
   return tbody;
