@@ -4,5 +4,8 @@ node_modules/
 !.env.example
 *.log
 coverage/
+# Salida de npm run build y estado local de la CLI de Netlify
+dist/
+.netlify/
 # Paquetes del INEGI de prueba: no se versionan (pesan varios MB)
 *.zip

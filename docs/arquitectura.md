@@ -78,7 +78,7 @@ Navegador (perfil usuario y administrador)                 Servidor Node.js (Exp
 | Clasificador ML (TF-IDF + Naive Bayes) para eje/tema | **Descartado**: fuera del alcance solicitado. |
 | Tabla `variables` EAV con `valor` como texto y jerarquía `parent_id` | **Rediseñado**: series con valores numéricos tipados y códigos del INEGI separados. |
 | Usuarios propios con hashes de Werkzeug y admin por defecto `admin/admin123` | **Descartado**: Supabase Auth, sin contraseñas por defecto. |
-| Despliegue en Netlify Functions | **Descartado**: límite de ~6 MB por petición y 26 s; los ZIP de muestra llegan a 6,2 MB. Con procesamiento en el navegador ya no hace falta subir archivos, pero el servidor sigue siendo un proceso Node normal. |
+| Despliegue en Netlify Functions | **Reconsiderado y adoptado**: se había descartado por el límite de ~6 MB por petición (los ZIP de muestra llegan a 6,2 MB), pero los ZIP ya se procesan en el navegador y nunca se suben. El portal se publica en el CDN (`dist/`, con las cabeceras de seguridad en `_headers`) y la API corre como función moderna en `/api/*`, que reenvía cada petición a la misma app Express escuchando en `127.0.0.1` dentro de la función: una sola implementación para Netlify, Docker y `npm start`, sin dependencias extra. Costos: 6 MB por envío al guardar series y límite de intentos de inicio de sesión por instancia. No se usa el modo Lambda (`exports.handler`, p. ej. con `serverless-http`) porque Netlify deja de aceptarlo el 1 de julio de 2027. |
 | Frontend de 5 300 líneas en un archivo | **Rediseñado** en módulos pequeños. |
 
 ## Seguridad

@@ -7,8 +7,6 @@ import { fileURLToPath } from 'node:url';
 import { COOKIE, DURACION_SEG, firmar, leerCookie, verificar } from './sesion.js';
 import { ErrorValidacion, validarSeries } from './validacion.js';
 
-const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const FFLATE = path.join(path.dirname(fileURLToPath(import.meta.resolve('fflate'))), 'browser.js');
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const CSP = [
@@ -16,6 +14,20 @@ const CSP = [
   "connect-src 'self'", "worker-src 'self'", "object-src 'none'", "base-uri 'none'",
   "form-action 'self'", "frame-ancestors 'none'",
 ].join('; ');
+
+/** Cabeceras de seguridad de todas las respuestas (scripts/construir-sitio.js las copia a dist/_headers para Netlify). */
+export const CABECERAS = {
+  'Content-Security-Policy': CSP,
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
+  'X-Frame-Options': 'DENY',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+};
+export const HSTS = 'max-age=31536000; includeSubDomains';
+
+/** Build de fflate para el navegador, servido en /vendor/fflate.js. */
+export const rutaFflate = () => path.join(path.dirname(fileURLToPath(import.meta.resolve('fflate'))), 'browser.js');
 
 /** Limita intentos fallidos de inicio de sesión por IP (ventana fija, en memoria). */
 function crearLimitador({ maximo = 10, ventanaMs = 15 * 60 * 1000 } = {}) {
@@ -36,21 +48,15 @@ function crearLimitador({ maximo = 10, ventanaMs = 15 * 60 * 1000 } = {}) {
   };
 }
 
-export function crearApp({ config, servicios }) {
+/** @param estaticos false en Netlify, donde el portal lo sirve el CDN y la función solo atiende /api. */
+export function crearApp({ config, servicios, estaticos = true }) {
   const app = express();
   app.disable('x-powered-by');
   if (config.proxies) app.set('trust proxy', config.proxies);
 
   app.use((req, res, next) => {
-    res.set({
-      'Content-Security-Policy': CSP,
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'no-referrer',
-      'X-Frame-Options': 'DENY',
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-    });
-    if (config.produccion) res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.set(CABECERAS);
+    if (config.produccion) res.set('Strict-Transport-Security', HSTS);
     next();
   });
   app.use(compression());
@@ -58,8 +64,11 @@ export function crearApp({ config, servicios }) {
   app.get('/healthz', (req, res) => res.json({ ok: true }));
   app.use('/api', crearApi({ config, servicios }));
 
-  app.get('/vendor/fflate.js', (req, res) => res.sendFile(FFLATE, { headers: { 'Cache-Control': 'public, max-age=86400' } }));
-  app.use(express.static(path.join(RAIZ, 'public'), { setHeaders: (res) => res.set('Cache-Control', 'no-cache') }));
+  if (estaticos) {
+    const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+    app.get('/vendor/fflate.js', (req, res) => res.sendFile(rutaFflate(), { headers: { 'Cache-Control': 'public, max-age=86400' } }));
+    app.use(express.static(path.join(raiz, 'public'), { setHeaders: (res) => res.set('Cache-Control', 'no-cache') }));
+  }
   app.use((req, res) => res.status(404).type('text').send('No encontrado'));
   return app;
 }

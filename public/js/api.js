@@ -9,7 +9,8 @@ async function pedir(ruta, { metodo = 'GET', cuerpo } = {}) {
   });
   if (r.status === 204) return null;
   const datos = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(datos.error || `Error ${r.status}`);
+  // 413 sin cuerpo JSON: lo rechazó la plataforma (en Netlify, más de 6 MB por envío) antes de llegar a la API.
+  if (!r.ok) throw new Error(datos.error || (r.status === 413 ? 'El envío es demasiado grande: guarda menos series a la vez.' : `Error ${r.status}`));
   return datos;
 }
 

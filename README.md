@@ -36,6 +36,7 @@ administración y las series guardadas aparecen deshabilitados.
 | `npm run dev` | Servidor de desarrollo con recarga automática (lee `.env`) |
 | `npm start` | Servidor de producción |
 | `npm test` | Pruebas (núcleo, servidor y, si existen, paquetes reales en `../INEGI` o `INEGI_DIR`) |
+| `npm run build` | Arma `dist/` para Netlify (portal, `fflate` y cabeceras de seguridad en `_headers`) |
 | `npm run db:setup` | Aplica `db/schema.sql` por Postgres (requiere salida al puerto 5432) |
 | `npm run admin:crear -- correo@dominio.mx` | Crea o promueve una cuenta de administración |
 
@@ -67,6 +68,30 @@ administración y las series guardadas aparecen deshabilitados.
 
 ## Despliegue público de bajo costo
 
+### Netlify (recomendado)
+
+`netlify.toml` ya trae todo: Netlify ejecuta `npm run build`, publica `dist/` en su CDN y despliega
+la API (`/api/*`) como función (`netlify/functions/api.mjs`), que ejecuta la misma app Express de
+`src/app.js`. HTTPS, HSTS y cookies `Secure` quedan activos sin configurar nada más.
+
+1. En Netlify: **Add new project → Import an existing project → GitHub** y elige este repositorio.
+   Netlify lee la configuración de `netlify.toml`; no cambies el comando ni la carpeta de publicación.
+2. En **Project configuration → Environment variables** agrega, con alcance **Functions**:
+   `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` y `SESSION_SECRET`.
+   No hacen falta `NODE_ENV`, `PORT`, `HOST`, `TRUST_PROXY` ni `DATABASE_URL` (no la subas: AWS
+   limita a 4 KB el total de variables de las funciones). Sin las de Supabase el portal funciona
+   igual, pero sin administración.
+3. **Deploy**. Cada `git push` a `main` vuelve a desplegar. Para probar antes en local:
+   `npx netlify-cli serve` (lee `.env`).
+
+Diferencias frente a un servidor propio, propias de las funciones de Netlify:
+- **6 MB por envío** al guardar series (en vez de 10 MB). Si una selección muy grande se rechaza,
+  el portal pide guardar menos series a la vez.
+- El **límite de intentos de inicio de sesión** vive en la memoria de cada instancia de la función,
+  así que es menos estricto que en un servidor único; Supabase Auth aplica además sus propios límites.
+
+### Contenedor o servidor Node
+
 El servidor no procesa archivos (≈ 60 MB de RAM, CPU mínima), así que basta la instancia más
 pequeña de cualquier hosting de Node o contenedores:
 
@@ -77,8 +102,7 @@ pequeña de cualquier hosting de Node o contenedores:
 
 En todos los casos: sirve el portal por **HTTPS**, define `NODE_ENV=production`, un
 `SESSION_SECRET` largo y `TRUST_PROXY=1` si hay un proxy delante. Comprobación de salud: `GET /healthz`.
-No uses funciones *serverless* con límites de cuerpo pequeños para la API si vas a guardar series
-grandes (hasta 10 MB por envío).
+En plataformas *serverless* el límite por envío lo fija la plataforma (en Netlify, 6 MB).
 
 ## Uso
 
@@ -106,7 +130,8 @@ public/         portal estático
   js/           interfaz: app.js, procesador(.worker).js, mapa.js, ui.js, api.js
   data/         mexico-estados.json (generado con scripts/construir-mapa.js desde Natural Earth)
 db/schema.sql   esquema de Supabase
-scripts/        db-setup, crear-admin, construir-mapa
+scripts/        db-setup, crear-admin, construir-mapa, construir-sitio (build para Netlify)
+netlify/        functions/api.mjs: la API como función de Netlify (configuración en netlify.toml)
 test/           pruebas (node:test)
 docs/           análisis y arquitectura
 ```
