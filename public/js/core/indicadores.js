@@ -2,7 +2,7 @@
 // Gramática: expr := term (('+'|'-') term)* ; term := unario (('*'|'/') unario)* ;
 // unario := ('-'|'+') unario | potencia ; potencia := primario ('^' unario)? ;
 // primario := número | LETRA ('.' componente)? | función '(' args ')' | '(' expr ')'
-import { COMPONENTES } from './agregacion.js';
+import { COMPONENTES, resumenDe } from './agregacion.js';
 
 export class ErrorFormula extends Error {
   constructor(mensaje, posicion) {
@@ -207,4 +207,15 @@ export function calcularIndicador(formula, entradas) {
     evaluar(arbol, obtener, base.length).forEach((celda, i) => { resultado[i][comp] = estructural[i] ? null : celda; });
   }
   return resultado;
+}
+
+/**
+ * Indicador sobre el total agregado de cada variable (suma de todas sus observaciones):
+ * devuelve un solo valor de total, hombres y mujeres.
+ */
+export function calcularIndicadorTotal(formula, entradas) {
+  const totales = Object.fromEntries(Object.entries(entradas)
+    .map(([letra, serie]) => [letra, { filas: [{ clave: 'TOTAL', unidad: '', categoria: '', ...resumenDe(serie) }] }]));
+  const [{ total, hombres, mujeres }] = calcularIndicador(formula, totales);
+  return { total, hombres, mujeres };
 }

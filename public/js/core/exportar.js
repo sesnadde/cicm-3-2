@@ -1,17 +1,22 @@
 // Exportación a CSV y XLSX. El XLSX se arma a mano (OOXML mínimo) para no depender de
 // librerías pesadas; zipSync (fflate) se inyecta para funcionar en navegador y Node.
-import { COMPONENTES } from './agregacion.js';
+import { COMPONENTES, etiquetaTotal, resumenDe } from './agregacion.js';
 
 const ETIQUETAS = { total: 'Total', hombres: 'Hombres', mujeres: 'Mujeres' };
 
 /** Valor exportable de una celda: número, código del INEGI o vacío. */
 export const valorExportable = (celda) => (celda == null ? '' : celda.v ?? celda.c ?? '');
 
-/** Formato largo: una fila por serie × unidad × categoría. */
+/** Filas de la serie precedidas por su total agregado (clave TOTAL), sin duplicarlo. */
+const conTotal = (s, unidad = etiquetaTotal(s.nivel)) => (s.filas.some((f) => f.clave === 'TOTAL')
+  ? s.filas
+  : [{ clave: 'TOTAL', unidad, categoria: '', ...resumenDe(s) }, ...s.filas]);
+
+/** Formato largo: una fila por serie × unidad × categoría, empezando por el total de cada serie. */
 export function filasLargas(series) {
   const filas = [['Variable', 'Tipo', 'Nivel', 'Año', 'Periodo de referencia', 'Fuente', 'Desagregación', 'Clave', 'Estado/Institución', 'Categoría', 'Total', 'Hombres', 'Mujeres', 'Observaciones']];
   for (const s of series) {
-    for (const f of s.filas) {
+    for (const f of conTotal(s)) {
       const parcial = COMPONENTES.some((c) => f[c]?.p);
       filas.push([
         s.nombre, s.tipo, s.nivel, s.anio ?? '', s.periodo ?? '', s.fuente ?? '', s.desagregacion ?? '',
@@ -24,14 +29,16 @@ export function filasLargas(series) {
   return filas;
 }
 
-/** Formato ancho ("Crear tabla"): una fila por unidad y una columna por serie y componente. */
+/** Formato ancho ("Crear tabla"): fila de total y una fila por unidad; una columna por serie y componente. */
 export function filasAnchas(series) {
   const columnas = series.flatMap((s) =>
     COMPONENTES.filter((c) => s.filas.some((f) => f[c] != null)).map((c) => ({ s, c, titulo: `${s.nombre} (${ETIQUETAS[c]})` })),
   );
+  const niveles = new Set(series.map((s) => s.nivel));
+  const unidadTotal = etiquetaTotal(niveles.size === 1 ? series[0].nivel : null);
   const unidades = new Map();
   for (const s of series) {
-    for (const f of s.filas) {
+    for (const f of conTotal(s, unidadTotal)) {
       const k = `${f.clave}\u0000${f.categoria ?? ''}`;
       if (!unidades.has(k)) unidades.set(k, { clave: f.clave, unidad: f.unidad, categoria: f.categoria ?? '', valores: new Map() });
       unidades.get(k).valores.set(s, f);

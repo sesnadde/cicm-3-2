@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { unzipSync } from 'fflate';
-import { calcularIndicador, compilarFormula, ErrorFormula } from '../public/js/core/indicadores.js';
+import { calcularIndicador, calcularIndicadorTotal, compilarFormula, ErrorFormula } from '../public/js/core/indicadores.js';
+import { resumenDe, resumirFilas } from '../public/js/core/agregacion.js';
 import { aCsv, aXlsx, filasAnchas, filasLargas } from '../public/js/core/exportar.js';
 import { zipSync } from 'fflate';
 
@@ -29,6 +30,39 @@ test('calcula por unidad y componente, con funciones de columna', () => {
   const norm = calcularIndicador('(A - min(A)) / (max(A) - min(A))', { A });
   assert.deepEqual(norm.map((f) => f.total.v), [0, 1]);
   assert.equal(calcularIndicador('promedio(A)', { A })[1].total.v, 20);
+});
+
+test('total agregado de una serie: suma, sumas parciales, códigos y componentes ausentes', () => {
+  const r = resumirFilas(serie([
+    ['01', c(10), c(4), null], ['02', c(5, null, true), c(1), null], ['03', c(null, 'NA'), c(null, 'NSS'), null],
+  ]).filas);
+  assert.deepEqual(r, { total: c(15, null, true), hombres: c(5, null, true), mujeres: null });
+  assert.deepEqual(resumirFilas(serie([['01', c(null, 'NA')], ['02', c(null, 'ND')]]).filas).total, c(null, 'ND'));
+  // Un indicador por entidad no se suma: usa el total que guardó al crearse
+  const ind = { tipo: 'indicador', filas: serie([['01', c(50)], ['02', c(50)]]).filas };
+  assert.deepEqual(resumenDe(ind), { total: null, hombres: null, mujeres: null });
+  assert.deepEqual(resumenDe({ ...ind, resumen: { total: c(40), hombres: null, mujeres: null } }).total, c(40));
+});
+
+test('indicador sobre el total agregado (no por observación)', () => {
+  const A = serie([['1', c(10), c(4), c(6)], ['2', c(30), c(6), c(24)]]); // 278 instituciones en la vida real
+  const B = serie([['1', c(100), c(50), c(50)], ['2', c(100), c(50), c(50)]]);
+  assert.deepEqual(calcularIndicadorTotal('A / B * 100', { A, B }), { total: c(20), hombres: c(10), mujeres: c(30) });
+  assert.deepEqual(calcularIndicadorTotal('A.mujeres / A.total * 100', { A }), { total: c(75), hombres: null, mujeres: null });
+  // Por observación daría 10 % y 30 %: no es lo mismo que el indicador del total
+  assert.deepEqual(calcularIndicador('A / B * 100', { A, B }).map((f) => f.total.v), [10, 30]);
+  const parcial = serie([['1', c(10, null, true)]]);
+  assert.equal(calcularIndicadorTotal('A * 2', { A: parcial }).total.p, true);
+});
+
+test('exportaciones incluyen la fila de total sin duplicarla', () => {
+  const v = { nombre: 'V', tipo: 'variable', nivel: 'Federal', filas: serie([['1', c(2)], ['2', c(3)]]).filas };
+  const largas = filasLargas([v]);
+  assert.deepEqual(largas.slice(1).map((f) => [f[7], f[8], f[10]]), [['TOTAL', 'Total federal', 5], ['1', 'U1', 2], ['2', 'U2', 3]]);
+  const soloTotal = { nombre: 'I', tipo: 'indicador', nivel: 'Federal', resumen: { total: c(9), hombres: null, mujeres: null },
+    filas: [{ clave: 'TOTAL', unidad: 'Total federal', categoria: '', total: c(9), hombres: null, mujeres: null }] };
+  assert.equal(filasLargas([soloTotal]).length, 2);
+  assert.deepEqual(filasAnchas([v, soloTotal]).slice(1, 2), [['TOTAL', 'Total federal', '', 5, 9]]);
 });
 
 test('componentes explícitos: porcentaje de mujeres en una sola columna', () => {
@@ -72,7 +106,8 @@ test('exporta CSV (BOM, comillas, neutraliza fórmulas) y formatos largo/ancho',
   assert.match(csv, /"Ags, México",,-3,NA,,/);
   const ancha = filasAnchas([s]);
   assert.deepEqual(ancha[0], ['Clave', 'Estado/Institución', 'Categoría', '=HIPERVINCULO("x") (Total)', '=HIPERVINCULO("x") (Hombres)']);
-  assert.deepEqual(ancha[1], ['01', 'Ags, México', '', -3, 'NA']);
+  assert.deepEqual(ancha[1], ['TOTAL', 'Estados Unidos Mexicanos', '', -3, 'NA']);
+  assert.deepEqual(ancha[2], ['01', 'Ags, México', '', -3, 'NA']);
 });
 
 test('genera un XLSX válido (ZIP con hoja y cadenas escapadas)', () => {

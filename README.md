@@ -86,9 +86,12 @@ grandes (hasta 10 MB por envío).
    de un censo de gobierno y arrástralo al recuadro (puedes cargar varios).
 2. Selecciona variables. Cada tabla puede **desagregarse** por una columna de catálogo (tipo de
    trámite, pueblo indígena, institución…). "Número de registros" sirve para preguntas Sí/No.
-3. En el espacio de trabajo: **Crear tabla** (formato ancho), **Crear indicador** (fórmulas con
-   `+ - * / ^`, `redondear`, `raiz`, `ln`, `log`, `abs`, `suma`, `promedio`, `min`, `max` y
-   componentes `A.total`, `A.hombres`, `A.mujeres`), **Mapa** (variables estatales),
+3. En el espacio de trabajo cada tarjeta muestra el **total agregado** (suma de todas sus
+   observaciones) y los subtotales de hombres y mujeres; «Ver valores» despliega el detalle.
+   Acciones: **Crear tabla** (formato ancho), **Crear indicador** (se calcula sobre los totales;
+   fórmulas con `+ - * / ^`, `redondear`, `raiz`, `ln`, `log`, `abs` y componentes `A.total`,
+   `A.hombres`, `A.mujeres`; con variables estatales puede calcularse también por entidad, donde
+   además funcionan `suma`, `promedio`, `min` y `max`), **Mapa** (variables estatales),
    **Descargar** (Excel o CSV) y **Agregar información manualmente** (p. ej. población para tasas).
 4. Códigos del INEGI que se conservan: NA (no aplica), NSS (no cuenta con elementos para
    responder), ND (no disponible), NP (no publicable). `*` = suma parcial (se omitieron registros

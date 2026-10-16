@@ -128,15 +128,19 @@
         <input class="campo campo-formula" id="indicador-formula" required maxlength="500" autocomplete="off" spellcheck="false" placeholder="Ej. A / B * 100">
       </label>
       <p class="error" id="indicador-error" role="alert"></p>
+      <label class="opcion-check">
+        <input type="checkbox" id="indicador-por-entidad">
+        <span>Calcular también por entidad federativa <span class="sub" id="indicador-por-entidad-ayuda">(permite ver el indicador en el mapa)</span></span>
+      </label>
       <details class="ayuda">
         <summary>Operaciones y funciones disponibles</summary>
         <ul>
+          <li>Se calcula con el <strong>total agregado</strong> de cada variable (la suma de todas sus observaciones) y por separado con los subtotales de hombres y de mujeres.</li>
           <li><code>+ - * / ^</code> y paréntesis. Las letras son las variables seleccionadas.</li>
-          <li>Por unidad: <code>abs(x)</code>, <code>raiz(x)</code>, <code>ln(x)</code>, <code>log(x)</code> (base 10), <code>redondear(x, decimales)</code>.</li>
-          <li>Sobre todas las unidades: <code>suma(x)</code>, <code>promedio(x)</code>, <code>min(x)</code>, <code>max(x)</code>.</li>
-          <li>Ejemplos: porcentaje <code>A / B * 100</code> · tasa por 100 mil <code>A / B * 100000</code> · participación <code>A / suma(A) * 100</code> · normalización <code>(A - min(A)) / (max(A) - min(A))</code>.</li>
-          <li>Se calcula por separado para total, hombres y mujeres, emparejando estado/institución y categoría.</li>
+          <li>Funciones: <code>abs(x)</code>, <code>raiz(x)</code>, <code>ln(x)</code>, <code>log(x)</code> (base 10), <code>redondear(x, decimales)</code>.</li>
+          <li>Ejemplos: porcentaje <code>A / B * 100</code> · tasa por 100 mil <code>A / B * 100000</code> · diferencia <code>A - B</code>.</li>
           <li>Para combinar componentes usa <code>A.total</code>, <code>A.hombres</code> o <code>A.mujeres</code>; el resultado queda en la columna Total. Ej. porcentaje de mujeres: <code>A.mujeres / A.total * 100</code>.</li>
+          <li>Solo al calcular por entidad: <code>suma(x)</code>, <code>promedio(x)</code>, <code>min(x)</code> y <code>max(x)</code> operan sobre las 32 entidades. Ej. participación <code>A / suma(A) * 100</code>.</li>
         </ul>
       </details>
       <div class="vista-previa" id="indicador-previa"></div>

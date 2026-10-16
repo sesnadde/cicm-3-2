@@ -37,6 +37,44 @@ class Acumulador {
   }
 }
 
+/** Suma celdas ya calculadas con la misma regla que al leer los CSV. */
+function sumarCeldas(celdas) {
+  let suma = 0;
+  let n = 0;
+  let parcial = false;
+  const codigos = new Set();
+  for (const c of celdas) {
+    if (c.v != null) {
+      suma += c.v;
+      n++;
+      parcial ||= c.p;
+    } else if (c.c) codigos.add(c.c);
+  }
+  if (n) return { v: suma, c: null, p: parcial || INFORMATIVOS.some((k) => codigos.has(k)) };
+  return { v: null, c: CODIGOS.find((k) => codigos.has(k)) ?? null, p: false };
+}
+
+/** Total agregado de unas filas por componente; null si ninguna fila trae ese componente. */
+export function resumirFilas(filas) {
+  return Object.fromEntries(COMPONENTES.map((comp) => {
+    const celdas = filas.map((f) => f[comp]).filter((c) => c != null);
+    return [comp, celdas.length ? sumarCeldas(celdas) : null];
+  }));
+}
+
+/**
+ * Total agregado de una serie (suma de todas sus observaciones). Los indicadores guardan el suyo
+ * al crearse, porque sumar porcentajes o tasas por entidad no tendría sentido.
+ */
+export function resumenDe(serie) {
+  if (serie.resumen) return serie.resumen;
+  if (serie.tipo === 'indicador') return { total: null, hombres: null, mujeres: null };
+  return resumirFilas(serie.filas);
+}
+
+/** Nombre de la fila de total agregado, como en los tabulados del INEGI. */
+export const etiquetaTotal = (nivel) => ({ Estatal: 'Estados Unidos Mexicanos', Federal: 'Total federal' })[nivel] ?? 'Total';
+
 const colador = new Intl.Collator('es', { numeric: true });
 
 /**

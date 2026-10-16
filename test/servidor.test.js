@@ -78,10 +78,13 @@ test('guardar series exige administrador vigente, mismo origen y datos válidos'
   const invalida = await pedir('/api/series', { metodo: 'POST', cuerpo: { series: [{ ...serie, nivel: 'Galáctico' }] }, cookie });
   assert.equal(invalida.status, 400);
   assert.match((await invalida.json()).error, /nivel/);
-  const ok = await pedir('/api/series', { metodo: 'POST', cuerpo: { series: [{ ...serie, extra: 'se ignora' }] }, cookie, origen: base });
+  const resumenMalo = await pedir('/api/series', { metodo: 'POST', cuerpo: { series: [{ ...serie, resumen: { total: { v: 'x' } } }] }, cookie });
+  assert.equal(resumenMalo.status, 400);
+  const ok = await pedir('/api/series', { metodo: 'POST', cuerpo: { series: [{ ...serie, extra: 'se ignora', resumen: { total: { v: 10, c: null, p: false } } }] }, cookie, origen: base });
   assert.equal(ok.status, 201);
   const { guardadas: [g] } = await ok.json();
   assert.equal(guardadas[0].extra, undefined);
+  assert.deepEqual(guardadas[0].resumen, { total: { v: 10, c: null, p: false }, hombres: null, mujeres: null });
   assert.deepEqual(guardadas[0].filas[0].mujeres, { v: null, c: 'NA', p: false });
   // Lectura pública
   assert.equal((await (await pedir('/api/series')).json()).length, 1);

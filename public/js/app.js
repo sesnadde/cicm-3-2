@@ -2,8 +2,8 @@
 // (tabla, indicadores, mapa, descargas) → guardado en base de datos (solo administración).
 import { $, el, aviso, celdaValor, descargar, fechaArchivo, normalizar, ocultarTooltip } from './ui.js';
 import { cargarZip, calcular } from './procesador.js';
-import { calcularIndicador, compilarFormula } from './core/indicadores.js';
-import { COMPONENTES } from './core/agregacion.js';
+import { calcularIndicador, calcularIndicadorTotal } from './core/indicadores.js';
+import { COMPONENTES, etiquetaTotal, resumenDe } from './core/agregacion.js';
 import { aCsv, aXlsx, filasAnchas, filasLargas } from './core/exportar.js';
 import { ENTIDADES } from './core/entidades.js';
 import { interpretarManual } from './core/manual.js';
@@ -341,6 +341,15 @@ function cuerpoSerie(s) {
   // De la fuente se muestra hasta la clave de tabla; el texto completo va en el título y en las descargas.
   const fuenteCorta = s.tipo === 'variable' ? s.fuente?.split(':')[0] : s.fuente;
   const meta = [s.desagregacion && `Desagregada por ${s.desagregacion.toLowerCase()}`, s.formula && `Fórmula: ${s.formula}`, fuenteCorta].filter(Boolean).join(' · ');
+  // La fila de la tarjeta muestra el total agregado; un indicador calculado solo sobre el total no tiene más filas.
+  const soloTotal = s.filas.length === 1 && s.filas[0].clave === 'TOTAL';
+  const resumen = resumenDe(s);
+  const celdaTotal = (c) => {
+    const td = celdaValor(resumen[c]);
+    td.classList.add('total-serie');
+    td.title = soloTotal ? 'Indicador calculado sobre el total agregado' : `Total agregado de las ${s.filas.length} observaciones`;
+    return td;
+  };
   tbody.append(el('tr', { class: `serie-cabecera${pos >= 0 ? ' seleccionada' : ''}` },
     el('td', { class: 'col-check' }, check),
     el('td', {},
@@ -350,10 +359,13 @@ function cuerpoSerie(s) {
       el('span', { class: 'serie-meta', title: s.fuente ?? '' }, meta.length > 220 ? `${meta.slice(0, 219)}…` : meta)),
     el('td', {}, s.nivel),
     el('td', {}, s.anio ?? '—'),
-    el('td', {}, toggle),
-    el('td', { colspan: 3 }, el('div', { class: 'serie-acciones' },
-      tieneEntidades && el('button', { type: 'button', class: 'mini', onclick: () => abrirMapa(s) }, 'Mapa'),
-      quitar))));
+    el('td', {},
+      el('div', { class: 'serie-acciones izq' },
+        !soloTotal && toggle,
+        tieneEntidades && el('button', { type: 'button', class: 'mini', onclick: () => abrirMapa(s) }, 'Mapa'),
+        quitar),
+      el('span', { class: 'serie-meta' }, soloTotal ? 'Calculado sobre el total agregado' : `Total: ${etiquetaTotal(s.nivel)}`)),
+    celdaTotal('total'), celdaTotal('hombres'), celdaTotal('mujeres')));
   if (abierta) {
     const limite = estado.completas.has(s.id) ? Infinity : FILAS_VISIBLES;
     for (const f of s.filas.slice(0, limite)) {
@@ -387,22 +399,40 @@ function exigirSeleccion(minimo = 1) {
 // ---------------------------------------------------------------------------
 const comun = (valores) => (new Set(valores).size === 1 ? valores[0] : null);
 
-function previsualizarIndicador() {
+/**
+ * Todas las series son estatales con valores por entidad (requisito para calcular por entidad).
+ * Se exige el nivel: las claves de institución federal (10–32) coinciden con claves de entidad.
+ */
+const porEntidadDisponible = (series) => series.every((s) => s.nivel === 'Estatal' && s.filas.some((f) => ENTIDADES[f.clave]));
+
+/** Calcula el indicador con las opciones del diálogo. Lanza ErrorFormula si la fórmula no es válida. */
+function calcularDesdeDialogo() {
   const series = seleccionadas().slice(0, LETRAS.length);
   const entradas = Object.fromEntries(series.map((s, i) => [LETRAS[i], s]));
-  const formula = $('#indicador-formula').value;
+  const formula = $('#indicador-formula').value.trim();
+  const nivel = comun(series.map((s) => s.nivel)) ?? 'Mixto';
+  // Siempre se calcula sobre el total agregado de cada variable (y los subtotales de hombres y mujeres).
+  const resumen = calcularIndicadorTotal(formula, entradas);
+  const porEntidad = $('#indicador-por-entidad').checked && porEntidadDisponible(series);
+  const filas = porEntidad
+    ? calcularIndicador(formula, entradas)
+    : [{ clave: 'TOTAL', unidad: etiquetaTotal(nivel), categoria: '', ...resumen }];
+  return { series, formula, nivel, resumen, porEntidad, filas };
+}
+
+function previsualizarIndicador() {
   const previa = $('#indicador-previa');
   previa.replaceChildren();
   $('#indicador-error').textContent = '';
-  if (!formula.trim()) return null;
+  if (!$('#indicador-formula').value.trim()) return null;
   try {
-    compilarFormula(formula, Object.keys(entradas));
-    const filas = calcularIndicador(formula, entradas);
+    const r = calcularDesdeDialogo();
+    const filas = [{ unidad: `${etiquetaTotal(r.nivel)} (total agregado)`, ...r.resumen }, ...(r.porEntidad ? r.filas.slice(0, 5) : [])];
     const tabla = el('table', { class: 'tabla-datos' },
       el('thead', {}, el('tr', {}, el('th', {}, 'Vista previa'), ...COMPONENTES.map((c) => el('th', { class: 'num' }, ETIQUETAS[c])))),
-      el('tbody', {}, filas.slice(0, 6).map((f) => el('tr', {}, el('td', {}, f.unidad + (f.categoria ? ` · ${f.categoria}` : '')), ...COMPONENTES.map((c) => celdaValor(f[c]))))));
+      el('tbody', {}, filas.map((f) => el('tr', {}, el('td', {}, f.unidad + (f.categoria ? ` · ${f.categoria}` : '')), ...COMPONENTES.map((c) => celdaValor(f[c]))))));
     previa.append(el('div', { class: 'tabla-contenedor tabla-modal' }, tabla));
-    return filas;
+    return r;
   } catch (err) {
     $('#indicador-error').textContent = err.message;
     return null;
@@ -415,28 +445,33 @@ $('#btn-indicador').addEventListener('click', () => {
   if (series.length > LETRAS.length) return aviso(`Un indicador admite hasta ${LETRAS.length} variables.`, 'error');
   $('#indicador-letras').replaceChildren(...series.map((s, i) => el('li', {}, el('b', {}, LETRAS[i]), `${s.nombre} (${s.nivel}${s.anio ? `, ${s.anio}` : ''})`)));
   $('#form-indicador').reset();
+  const disponible = porEntidadDisponible(series);
+  $('#indicador-por-entidad').disabled = !disponible;
+  $('#indicador-por-entidad-ayuda').textContent = disponible
+    ? '(permite ver el indicador en el mapa)'
+    : '(disponible cuando todas las variables tienen valores por entidad federativa)';
   previsualizarIndicador();
   $('#dlg-indicador').showModal();
 });
 $('#indicador-formula').addEventListener('input', previsualizarIndicador);
+$('#indicador-por-entidad').addEventListener('change', previsualizarIndicador);
 $('#form-indicador').addEventListener('submit', (e) => {
   if (e.submitter?.value !== 'crear') return;
   e.preventDefault();
-  const filas = previsualizarIndicador();
-  if (!filas) return void ($('#indicador-error').textContent ||= 'Escribe una fórmula.');
-  const series = seleccionadas();
-  const formula = $('#indicador-formula').value.trim();
+  const r = previsualizarIndicador();
+  if (!r) return void ($('#indicador-error').textContent ||= 'Escribe una fórmula.');
   agregarSeries([{
     id: nuevoId(),
     tipo: 'indicador',
     nombre: $('#indicador-nombre').value.trim(),
-    nivel: comun(series.map((s) => s.nivel)) ?? 'Mixto',
-    anio: comun(series.map((s) => s.anio ?? null)),
-    periodo: comun(series.map((s) => s.periodo ?? null)),
-    fuente: `Indicador calculado con ${series.map((s, i) => `${LETRAS[i]} = ${s.nombre}`).join('; ')}`.slice(0, 1000),
-    formula,
-    desagregacion: comun(series.map((s) => s.desagregacion ?? null)),
-    filas,
+    nivel: r.nivel,
+    anio: comun(r.series.map((s) => s.anio ?? null)),
+    periodo: comun(r.series.map((s) => s.periodo ?? null)),
+    fuente: `Indicador calculado con ${r.series.map((s, i) => `${LETRAS[i]} = ${s.nombre}`).join('; ')}`.slice(0, 1000),
+    formula: r.formula,
+    desagregacion: r.porEntidad ? comun(r.series.map((s) => s.desagregacion ?? null)) : null,
+    filas: r.filas,
+    resumen: r.resumen,
   }]);
   $('#dlg-indicador').close();
 });

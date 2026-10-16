@@ -205,6 +205,8 @@ button { font: inherit; }
 .serie-nombre { font-weight: 600; }
 .serie-meta { display: block; margin-top: 2px; color: var(--tenue); font-size: 0.8rem; font-weight: 400; }
 .serie-acciones { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.serie-acciones.izq { justify-content: flex-start; }
+.serie-cabecera .total-serie { font-weight: 600; }
 .etiqueta-tipo { display: inline-block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.02em; padding: 1px 8px; border-radius: 99px; margin-left: 8px; vertical-align: 1px; }
 .etiqueta-tipo.indicador { background: #e3f1ee; color: var(--verde); }
 .etiqueta-tipo.manual { background: #f6eedd; color: var(--oro-texto); }
@@ -263,6 +265,10 @@ input[type="search"].campo { padding-left: 38px; background: var(--superficie) u
 textarea.campo { font-family: var(--mono); font-size: 0.85rem; resize: vertical; }
 .error { color: var(--carmesi); min-height: 1.2em; margin: 4px 0; font-size: 0.86rem; font-weight: 500; }
 .ayuda { font-size: 0.86rem; color: var(--tenue); margin: 8px 0 12px; }
+.opcion-check { display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 8px; font-size: 0.9rem; cursor: pointer; }
+.opcion-check input { margin-top: 3px; accent-color: var(--carmesi); }
+.opcion-check .sub { display: inline; margin: 0; }
+.opcion-check input:disabled, .opcion-check input:disabled + span { cursor: not-allowed; color: var(--tenue-2); }
 .ayuda summary, .grupo-tabla summary { list-style: none; position: relative; cursor: pointer; }
 .ayuda summary::-webkit-details-marker, .grupo-tabla summary::-webkit-details-marker { display: none; }
 .ayuda summary::before, .grupo-tabla summary::before {

@@ -52,12 +52,20 @@ Navegador (perfil usuario y administrador)                 Servidor Node.js (Exp
    indicador (`A.hombres + A.mujeres`).
 4. **Crear tabla** (botón de la maqueta) = tabla ancha (una fila por unidad, una columna por
    variable y componente) de las variables seleccionadas, descargable.
-5. **Indicadores**: se emparejan filas por clave de unidad y categoría. Sin componentes
-   explícitos se calculan por separado total/hombres/mujeres; con `A.mujeres`, `A.total`… el
-   resultado es un solo valor (columna Total).
-6. **Captura manual**: a nivel estatal se reconocen nombres (con o sin acentos, alias como CDMX)
+5. **Total agregado**: cada tarjeta muestra en Total/Hombres/Mujeres la suma de todas sus
+   observaciones (entidades o instituciones), con la misma regla de códigos y sumas parciales.
+   Se rotula "Estados Unidos Mexicanos" (estatal) o "Total federal", y encabeza las descargas
+   (clave `TOTAL`).
+6. **Indicadores**: se calculan sobre el **total agregado** de cada variable y, por separado, con
+   los subtotales de hombres y de mujeres (no observación por observación). Con `A.mujeres`,
+   `A.total`… el resultado es un solo valor (columna Total). Si todas las variables son
+   estatales se puede marcar «Calcular también por entidad federativa»: se emparejan filas por
+   entidad y categoría, lo que habilita el mapa; la tarjeta sigue mostrando el valor calculado
+   sobre los totales (se guarda en `resumen`, porque sumar porcentajes o tasas por entidad no
+   tendría sentido).
+7. **Captura manual**: a nivel estatal se reconocen nombres (con o sin acentos, alias como CDMX)
    o claves 01–32; a nivel federal la unidad es el texto escrito.
-7. Las **series guardadas** se pueden consultar públicamente; solo el administrador guarda y elimina.
+8. Las **series guardadas** se pueden consultar públicamente; solo el administrador guarda y elimina.
 
 ## Revisión crítica de `ArieBrito/gestor_variables`
 

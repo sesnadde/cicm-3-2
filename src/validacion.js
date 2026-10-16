@@ -28,6 +28,14 @@ function celda(c, donde) {
   return { v, c: codigo, p: c.p === true };
 }
 
+/** Total agregado opcional {total, hombres, mujeres}. */
+function resumen(r, donde) {
+  if (r === null || r === undefined) return null;
+  if (typeof r !== 'object' || Array.isArray(r)) falla(`Total agregado no válido en ${donde}.`);
+  const lugar = `el total de ${donde}`;
+  return { total: celda(r.total, lugar), hombres: celda(r.hombres, lugar), mujeres: celda(r.mujeres, lugar) };
+}
+
 export function validarSeries(cuerpo) {
   const series = cuerpo?.series;
   if (!Array.isArray(series) || !series.length) falla('Envía al menos una serie.');
@@ -50,6 +58,7 @@ export function validarSeries(cuerpo) {
       fuente: texto(s.fuente, 'fuente', 1000, { opcional: true }),
       formula: texto(s.formula, 'fórmula', 500, { opcional: true }),
       desagregacion: texto(s.desagregacion, 'desagregación', 300, { opcional: true }),
+      resumen: resumen(s.resumen, donde),
       filas: s.filas.map((f, j) => {
         const lugar = `${donde}, fila ${j + 1}`;
         if (typeof f !== 'object' || f === null) falla(`Fila no válida en ${lugar}.`);

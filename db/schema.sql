@@ -16,11 +16,17 @@ create table if not exists public.series (
   desagregacion   text,
   filas           jsonb not null check (jsonb_typeof(filas) = 'array'),
   n_filas         integer not null,
+  -- Total agregado {total, hombres, mujeres}. Solo los indicadores lo guardan: el de una
+  -- variable es la suma de sus filas, pero el de un indicador no (no se suman porcentajes).
+  resumen         jsonb,
   guardado_por    uuid references auth.users (id) on delete set null,
   actualizado_en  timestamptz not null default now(),
   -- Guardar de nuevo la misma serie la reemplaza
   constraint series_unica unique nulls not distinct (nombre, nivel, anio, desagregacion)
 );
+
+-- Para bases creadas con una versión anterior de este esquema
+alter table public.series add column if not exists resumen jsonb;
 
 create index if not exists series_actualizado_idx on public.series (actualizado_en desc);
 
