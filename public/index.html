@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Procesador de datos del INEGI</title>
+  <meta name="description" content="Procesa paquetes de datos abiertos del INEGI en tu navegador, crea indicadores y descarga resultados.">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/estilos.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <a class="saltar" href="#principal">Saltar al contenido</a>
+  <header class="encabezado">
+    <a class="marca" href="./" aria-label="Inicio">
+      <img src="img/logo-sesna.svg" alt="SESNA" class="logo">
+      <span class="marca-texto">Procesador de datos del INEGI</span>
+    </a>
+    <nav class="nav">
+      <button type="button" class="nav-boton" id="btn-guardadas" hidden>Series guardadas</button>
+      <div class="perfil">
+        <button type="button" class="nav-boton perfil-boton" id="btn-perfil" aria-haspopup="menu" aria-expanded="false">USUARIO</button>
+        <div class="menu" id="menu-perfil" role="menu" hidden>
+          <p class="menu-info" id="perfil-info">Perfil público: procesas datos sin guardarlos.</p>
+          <button type="button" role="menuitem" id="btn-login">Iniciar sesión como administrador</button>
+          <button type="button" role="menuitem" id="btn-logout" hidden>Cerrar sesión</button>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main id="principal" class="principal">
+    <!-- Paso 1: instrucciones y carga -->
+    <section id="vista-inicio" class="vista">
+      <h1 class="titulo-paso">1. Instrucciones</h1>
+      <ol class="instrucciones">
+        <li>Descarga de <a href="https://www.inegi.org.mx/datosabiertos/" target="_blank" rel="noopener noreferrer">inegi.org.mx</a> el paquete de <strong>datos abiertos en CSV</strong> (archivo ZIP) de un censo de gobierno, por ejemplo el CNGE (estatal) o el CNGF (federal).</li>
+        <li>Arrastra el ZIP al recuadro o selecciónalo. Puedes cargar varios.</li>
+        <li>Elige las variables de interés y, si lo necesitas, desagrégalas por una categoría.</li>
+        <li>Crea tablas o indicadores, visualiza mapas por entidad y descarga los resultados.</li>
+      </ol>
+      <p class="nota-privacidad">🔒 Los archivos se procesan en tu navegador: no se envían a ningún servidor.</p>
+      <label class="zona-carga" id="zona-carga">
+        <input type="file" id="entrada-zip" accept=".zip,application/zip" multiple>
+        <span class="zona-texto">Arrastra aquí el archivo ZIP</span>
+        <span class="zona-sub">o <u>haz clic para seleccionarlo</u></span>
+      </label>
+    </section>
+
+    <!-- Paso 3: espacio de trabajo -->
+    <section id="vista-trabajo" class="vista" hidden>
+      <div class="barra">
+        <div class="barra-grupo">
+          <button type="button" class="boton-gris" id="btn-manual">+ Agregar información manualmente</button>
+          <button type="button" class="boton-gris" id="btn-otro-zip">+ Cargar ZIP</button>
+          <button type="button" class="boton-gris" id="btn-mas-variables" hidden>+ Más variables</button>
+        </div>
+        <div class="barra-grupo">
+          <button type="button" class="boton-gris" id="btn-tabla">Crear tabla</button>
+          <button type="button" class="boton-gris" id="btn-indicador">Crear indicador</button>
+          <button type="button" class="boton-gris" id="btn-descargar">Descargar</button>
+          <button type="button" class="boton-primario" id="btn-guardar" hidden>Guardar en base de datos</button>
+        </div>
+      </div>
+      <p class="ayuda-seleccion" id="ayuda-seleccion" aria-live="polite"></p>
+      <div class="tabla-contenedor">
+        <table class="tabla-datos" id="tabla-trabajo">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="check-todas" aria-label="Seleccionar todas las variables"></th>
+              <th>Variable</th>
+              <th>Nivel</th>
+              <th>Año</th>
+              <th>Estado/Institución</th>
+              <th class="num">Total</th>
+              <th class="num">Hombres</th>
+              <th class="num">Mujeres</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+      <p class="leyenda-codigos">
+        <abbr title="No aplica">NA</abbr> No aplica · <abbr title="No cuenta con elementos para responder">NSS</abbr> No cuenta con elementos para responder ·
+        <abbr title="Información no disponible">ND</abbr> Información no disponible · <abbr title="No publicable">NP</abbr> No publicable ·
+        — la fuente no trae ese dato · * suma parcial: se omitieron registros NSS/ND/NP
+      </p>
+    </section>
+  </main>
+
+  <!-- Paso 2: carga y selección de variables -->
+  <dialog id="dlg-variables" class="dialogo dialogo-tarjeta" aria-labelledby="dlg-variables-titulo">
+    <button type="button" class="cerrar-x" data-cerrar aria-label="Cerrar">×</button>
+    <div class="carga" id="carga">
+      <p class="carga-texto" id="carga-texto">Cargando...</p>
+      <div class="progreso" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progreso"><div class="progreso-barra" id="progreso-barra"></div></div>
+    </div>
+    <div id="seleccion" hidden>
+      <h2 id="dlg-variables-titulo">Selecciona las variables de interés</h2>
+      <p class="sub" id="seleccion-paquete"></p>
+      <input type="search" id="buscar-variable" class="campo" placeholder="Buscar variable o tabla…" aria-label="Buscar variable o tabla">
+      <div class="lista-variables" id="lista-variables"></div>
+      <p class="advertencias" id="advertencias" hidden></p>
+    </div>
+    <div class="pie">
+      <button type="button" class="boton-gris" id="btn-vaciar">Vaciar</button>
+      <button type="button" class="boton-primario" id="btn-siguiente" disabled>Siguiente</button>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-indicador" class="dialogo" aria-labelledby="dlg-indicador-titulo">
+    <form method="dialog" id="form-indicador">
+      <h2 id="dlg-indicador-titulo">Crear indicador</h2>
+      <ul class="letras" id="indicador-letras"></ul>
+      <label class="etiqueta">Nombre del indicador
+        <input class="campo" id="indicador-nombre" required maxlength="300" placeholder="Ej. Porcentaje de mujeres en el personal adscrito">
+      </label>
+      <label class="etiqueta">Fórmula
+        <input class="campo campo-formula" id="indicador-formula" required maxlength="500" autocomplete="off" spellcheck="false" placeholder="Ej. A / B * 100">
+      </label>
+      <p class="error" id="indicador-error" role="alert"></p>
+      <details class="ayuda">
+        <summary>Operaciones y funciones disponibles</summary>
+        <ul>
+          <li><code>+ - * / ^</code> y paréntesis. Las letras son las variables seleccionadas.</li>
+          <li>Por unidad: <code>abs(x)</code>, <code>raiz(x)</code>, <code>ln(x)</code>, <code>log(x)</code> (base 10), <code>redondear(x, decimales)</code>.</li>
+          <li>Sobre todas las unidades: <code>suma(x)</code>, <code>promedio(x)</code>, <code>min(x)</code>, <code>max(x)</code>.</li>
+          <li>Ejemplos: porcentaje <code>A / B * 100</code> · tasa por 100 mil <code>A / B * 100000</code> · participación <code>A / suma(A) * 100</code> · normalización <code>(A - min(A)) / (max(A) - min(A))</code>.</li>
+          <li>Se calcula por separado para total, hombres y mujeres, emparejando estado/institución y categoría.</li>
+          <li>Para combinar componentes usa <code>A.total</code>, <code>A.hombres</code> o <code>A.mujeres</code>; el resultado queda en la columna Total. Ej. porcentaje de mujeres: <code>A.mujeres / A.total * 100</code>.</li>
+        </ul>
+      </details>
+      <div class="vista-previa" id="indicador-previa"></div>
+      <div class="pie">
+        <button type="submit" value="cancelar" class="boton-gris" formnovalidate>Cancelar</button>
+        <button type="submit" value="crear" class="boton-primario" id="btn-crear-indicador">Crear indicador</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-manual" class="dialogo" aria-labelledby="dlg-manual-titulo">
+    <form method="dialog" id="form-manual">
+      <h2 id="dlg-manual-titulo">Agregar información manualmente</h2>
+      <div class="fila-campos">
+        <label class="etiqueta crece">Nombre de la variable
+          <input class="campo" id="manual-nombre" required maxlength="300" placeholder="Ej. Población total">
+        </label>
+        <label class="etiqueta">Nivel
+          <select class="campo" id="manual-nivel"><option>Estatal</option><option>Federal</option></select>
+        </label>
+        <label class="etiqueta">Año
+          <input class="campo campo-corto" id="manual-anio" type="number" min="1900" max="2100" step="1">
+        </label>
+      </div>
+      <label class="etiqueta">Fuente (opcional)
+        <input class="campo" id="manual-fuente" maxlength="500" placeholder="Ej. INEGI. Censo de Población y Vivienda 2020">
+      </label>
+      <label class="etiqueta">Valores: una fila por estado o institución — <code>nombre, total, hombres, mujeres</code>
+        <textarea class="campo" id="manual-valores" rows="10" spellcheck="false" placeholder="Jalisco, 8348151, 4093000, 4255151&#10;Nuevo León, 5784442, 2880000, 2904442"></textarea>
+      </label>
+      <p class="sub">Separa con coma o tabulador (puedes pegar desde Excel). Hombres y mujeres son opcionales. Se aceptan NA, NSS, ND y NP. En nivel estatal se reconocen nombres o claves (01–32).</p>
+      <button type="button" class="enlace" id="btn-rellenar">Rellenar con las 32 entidades</button>
+      <p class="error" id="manual-error" role="alert"></p>
+      <div class="pie">
+        <button type="submit" value="cancelar" class="boton-gris" formnovalidate>Cancelar</button>
+        <button type="submit" value="agregar" class="boton-primario">Agregar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-tabla" class="dialogo dialogo-ancho" aria-labelledby="dlg-tabla-titulo">
+    <h2 id="dlg-tabla-titulo">Tabla</h2>
+    <p class="sub">Una fila por estado/institución y una columna por variable seleccionada.</p>
+    <div class="tabla-contenedor tabla-modal" id="tabla-ancha"></div>
+    <div class="pie">
+      <button type="button" class="boton-gris" data-cerrar>Cerrar</button>
+      <span class="pie-grupo">
+        <button type="button" class="boton-gris" id="btn-tabla-csv">Descargar CSV</button>
+        <button type="button" class="boton-primario" id="btn-tabla-xlsx">Descargar Excel</button>
+      </span>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-descargar" class="dialogo" aria-labelledby="dlg-descargar-titulo">
+    <form method="dialog" id="form-descargar">
+      <h2 id="dlg-descargar-titulo">Descargar resultados</h2>
+      <fieldset class="opciones">
+        <legend>Qué descargar</legend>
+        <label><input type="radio" name="alcance" value="seleccion" checked> Variables seleccionadas</label>
+        <label><input type="radio" name="alcance" value="todas"> Todo el espacio de trabajo</label>
+      </fieldset>
+      <fieldset class="opciones">
+        <legend>Formato</legend>
+        <label><input type="radio" name="formato" value="xlsx" checked> Excel (.xlsx)</label>
+        <label><input type="radio" name="formato" value="csv"> CSV (UTF-8)</label>
+      </fieldset>
+      <div class="pie">
+        <button type="submit" value="cancelar" class="boton-gris" formnovalidate>Cancelar</button>
+        <button type="submit" value="descargar" class="boton-primario">Descargar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-mapa" class="dialogo dialogo-ancho" aria-labelledby="dlg-mapa-titulo">
+    <h2 id="dlg-mapa-titulo">Mapa por entidad federativa</h2>
+    <div class="fila-campos">
+      <label class="etiqueta">Valor
+        <select class="campo" id="mapa-componente"></select>
+      </label>
+      <label class="etiqueta crece" id="mapa-categoria-etiqueta" hidden>Categoría
+        <select class="campo" id="mapa-categoria"></select>
+      </label>
+    </div>
+    <div class="mapa" id="mapa"></div>
+    <div class="pie">
+      <button type="button" class="boton-gris" data-cerrar>Cerrar</button>
+      <span class="pie-grupo">
+        <button type="button" class="boton-gris" id="btn-mapa-svg">Descargar SVG</button>
+        <button type="button" class="boton-primario" id="btn-mapa-png">Descargar PNG</button>
+      </span>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-guardadas" class="dialogo dialogo-ancho" aria-labelledby="dlg-guardadas-titulo">
+    <h2 id="dlg-guardadas-titulo">Series guardadas</h2>
+    <p class="sub">Series publicadas por la administración del portal. Agrégalas a tu espacio de trabajo para combinarlas con tus datos.</p>
+    <div class="tabla-contenedor tabla-modal" id="lista-guardadas"></div>
+    <div class="pie"><button type="button" class="boton-gris" data-cerrar>Cerrar</button></div>
+  </dialog>
+
+  <dialog id="dlg-login" class="dialogo dialogo-angosto" aria-labelledby="dlg-login-titulo">
+    <form method="dialog" id="form-login">
+      <h2 id="dlg-login-titulo">Acceso de administración</h2>
+      <label class="etiqueta">Correo
+        <input class="campo" id="login-email" type="email" autocomplete="username" required maxlength="320">
+      </label>
+      <label class="etiqueta">Contraseña
+        <input class="campo" id="login-password" type="password" autocomplete="current-password" required maxlength="200">
+      </label>
+      <p class="error" id="login-error" role="alert"></p>
+      <div class="pie">
+        <button type="submit" value="cancelar" class="boton-gris" formnovalidate>Cancelar</button>
+        <button type="submit" value="entrar" class="boton-primario">Entrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="avisos" id="avisos" aria-live="polite"></div>
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+</body>
+</html>

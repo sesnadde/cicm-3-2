@@ -1,0 +1,27 @@
+{
+  "name": "cicm-portal-inegi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portal público para procesar paquetes de datos abiertos del INEGI (censos de gobierno) y construir indicadores",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "dev": "node --env-file-if-exists=.env --watch src/server.js",
+    "test": "node --test \"test/**/*.test.js\"",
+    "db:setup": "node --env-file-if-exists=.env scripts/db-setup.js",
+    "admin:crear": "node --env-file-if-exists=.env scripts/crear-admin.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "2.117.2",
+    "compression": "1.8.2",
+    "express": "5.2.1",
+    "fflate": "0.8.3"
+  },
+  "devDependencies": {
+    "pg": "8.23.1"
+  }
+}
